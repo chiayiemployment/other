@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多元就業開發方案 經費概算試算</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 替換為支援儲存格樣式、邊框、字體的 SheetJS (xlsx-js-style) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gov: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 15px; /* 提升全站基礎字級 */
+    }
+    /* 表格自訂列印樣式 */
+    @media print {
+      .no-print { display: none !important; }
+      body { background-color: #fff; font-size: 12pt; }
+    }
+    /* 方案切換：兩種方案採一致的白底選取樣式，避免經濟型過亮 */
+    .plan-switch { display: inline-flex; align-items: stretch; gap: 4px; padding: 5px; background: #083956; border: 1px solid rgba(186,230,253,.25); border-radius: 15px; }
+    .plan-switch .plan-tab { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-width: 148px; padding: 10px 17px; border-radius: 10px; border: 1px solid transparent; color: #c4dced; background: transparent; font-size: 15px; font-weight: 650; line-height: 1.35; white-space: nowrap; transition: background .18s ease,color .18s ease,box-shadow .18s ease; cursor: pointer; }
+    .plan-switch .plan-tab:hover:not(.is-active) { background: rgba(255,255,255,.11); color: #fff; }
+    .plan-switch .plan-tab.is-active { background: #fff; color: #075985; border-color: #dae7ee; box-shadow: 0 2px 7px rgba(0,0,0,.13); font-weight: 750; }
+    .plan-switch .plan-tab:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+    .plan-switch .plan-tab i { color: #7dd3fc; font-size: 16px; }
+    .plan-switch .plan-tab.is-active i { color: #0369a1; }
+    @media (max-width: 440px) { .plan-switch { width: 100%; } .plan-switch .plan-tab { min-width: 0; flex: 1; padding: 10px 8px; font-size: 14px; } }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-gov-800 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white/10 p-2.5 rounded-xl">
+          <i class="fa-solid fa-calculator text-2xl text-sky-300"></i>
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight">多元就業開發方案 經費概算試算</h1>
+          <p class="text-sm text-sky-200 mt-0.5">依據勞動部最新標準自動試算 ‧ 即時檢核 ‧ 支援匯出 Word / Excel</p>
+        </div>
+      </div>
+      <!-- 類型切換 Tabs：一致的簡潔高對比樣式 -->
+      <div class="plan-switch" role="group" aria-label="選擇方案類型">
+        <button id="tab-social" type="button" onclick="switchPlanType('social')" class="plan-tab is-active" aria-pressed="true">
+          <i class="fa-solid fa-users"></i>
+          <span>社會型方案</span>
+        </button>
+        <button id="tab-economic" type="button" onclick="switchPlanType('economic')" class="plan-tab" aria-pressed="false">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>經濟型方案</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 通知氣泡訊息 -->
+  <div id="toast" class="fixed top-16 right-5 z-50 transform transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-xl flex items-center space-x-3 border border-slate-700">
+    <i id="toast-icon" class="fa-solid fa-check text-emerald-400 text-xl"></i>
+    <span id="toast-msg" class="text-base font-medium"></span>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 頂端資訊與參數展開面板 -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center cursor-pointer select-none" onclick="toggleParams()">
+        <div class="flex items-center space-x-2.5 text-gov-800 font-bold text-lg">
+          <i class="fa-solid fa-sliders text-gov-600"></i>
+          <span>核心費率與給付參數設定</span>
+          <span class="text-xs sm:text-sm bg-sky-100 text-gov-700 font-medium px-3 py-1 rounded-full">預設為法規標準值，點擊可自訂調整</span>
+        </div>
+        <div class="flex items-center space-x-2 text-sm sm:text-base text-slate-500 font-medium">
+          <span id="param-toggle-text">展開設定</span>
+          <i id="param-toggle-icon" class="fa-solid fa-chevron-down transition-transform duration-200"></i>
+        </div>
+      </div>
+      
+      <!-- 參數設定內容 (預設折疊) -->
+      <div id="params-panel" class="hidden p-6 bg-slate-50/50 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">116年度 基本時薪 (元/時)</label>
+          <input type="number" id="p_hourlyWage" value="205" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">116年度標準公告 205 元</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">社會型專管月薪 (元/月)</label>
+          <input type="number" id="p_socialMgrWage" value="32530" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">年編列 390,360 元</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">經濟型專經月薪 (元/月)</label>
+          <input type="number" id="p_econMgrWageMaster" value="38769" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">年編列 465,228 元</span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">進用人員勞職健保費（全額補助，元/月）</label>
+          <input type="number" id="p_ins150Sub" value="4147" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">年編列 49,764 元（26h 無需另編保費自籌）</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">進用(自籌26h)津貼 (元/月)</label>
+          <input type="number" id="p_wage26Own" value="5330" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">205元*26h，年編列 63,960 元</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">110h 保費補助款 (部分工時)</label>
+          <input type="number" id="p_ins110Sub" value="3080" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">對應部分工時級距</span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">社會型專管保費每月合計 (元/月)</label>
+          <input type="number" id="p_mgrInsSocial" value="4468" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">年編列 53,616 元</span>
+        </div>
+        <div class="space-y-1.5">
+          <label class="font-semibold text-slate-700 text-sm">經濟型專經保費 (元/月)</label>
+          <input type="number" id="p_mgrInsEconMaster" value="5380" class="w-full border rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+          <span class="text-xs text-slate-500">年編列 64,560 元</span>
+        </div>
+        <div class="space-y-1.5 flex items-end">
+          <button onclick="resetParams()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2 px-3.5 rounded-lg text-sm transition">
+            <i class="fa-solid fa-rotate-left mr-1.5"></i>重置回116年預設參數
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主要兩欄排版 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- 左側：輸入表單 -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- 卡片 1: 人事實施項目 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
+            <div class="flex items-center space-x-2.5 text-gov-800 font-bold text-lg">
+              <span class="w-7 h-7 rounded-full bg-gov-100 text-gov-800 flex items-center justify-center text-sm font-extrabold">1</span>
+              <span>用人費用設定（進用人員）</span>
+            </div>
+            <span class="text-xs sm:text-sm text-sky-700 font-semibold bg-sky-50 px-2.5 py-1 rounded-md border border-sky-200">
+              <i class="fa-solid fa-pen-to-square mr-1"></i>依單位需求彈性填列
+            </span>
+          </div>
+
+          <!-- 176 小時 -->
+          <div id="card_worker_176" class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5">
+            <div class="flex justify-between items-center text-sm font-bold text-slate-800">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-clock text-sky-600"></i> 全日工作 (176小時: 補助150h + 自籌26h)
+              </span>
+              <span id="badge_176_split" class="text-xs text-sky-800 bg-sky-100 px-2.5 py-1 rounded-md font-mono font-semibold">補助$30,750 + 自籌$5,330</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3.5">
+              <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">進用人數 (人)</label>
+                <input type="number" id="count_176" min="0" value="2" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none transition-colors" oninput="calculateAll()">
+              </div>
+              <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">月數 (月)</label>
+                <input type="number" id="months_176" min="0" max="12" value="12" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none transition-colors" oninput="calculateAll()">
+              </div>
+            </div>
+            <div class="text-xs sm:text-sm text-slate-600 flex justify-between pt-2 border-t border-slate-200/60">
+              <span class="text-emerald-700 font-bold">勞職健保費：每月全額補助 $4,147（每年 $49,764／人）</span>
+              <span class="text-slate-500 font-medium">單位僅自籌26h薪資</span>
+            </div>
+          </div>
+
+          <!-- 110 小時 (預設未勾選，打勾後才展開填寫) -->
+          <div id="card_worker_110" class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div class="flex justify-between items-center">
+              <label class="flex items-center space-x-2.5 cursor-pointer">
+                <input type="checkbox" id="has_part_time" class="w-5 h-5 text-gov-600 rounded focus:ring-gov-500" onchange="togglePartTimeInputs(); calculateAll();">
+                <span class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <i class="fa-solid fa-clock text-amber-600"></i> 編列部分工時 (110小時)
+                </span>
+              </label>
+              <span class="text-xs text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">如有編列部分工時才需填寫</span>
+            </div>
+
+            <!-- 輸入區域（預設隱藏） -->
+            <div id="part_time_inputs_container" class="space-y-2.5 hidden pt-2 border-t border-slate-200/60">
+              <div class="text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <i class="fa-solid fa-circle-check mr-1"></i>全額補助薪資與保費
+              </div>
+              <div class="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">進用人數 (人)</label>
+                  <input type="number" id="count_110" min="0" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none transition-colors" oninput="calculateAll()">
+                </div>
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">月數 (月)</label>
+                  <input type="number" id="months_110" min="0" max="12" value="12" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none transition-colors" oninput="calculateAll()">
+                </div>
+              </div>
+              <div class="text-xs sm:text-sm text-slate-600 pt-1">
+                每月全額補助 $22,550 元，勞職健保補助款 $3,080/月
+              </div>
+            </div>
+          </div>
+
+          <!-- 專案管理人/經理人設定 -->
+          <div class="p-4 bg-sky-50/70 rounded-xl border border-sky-200 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2.5 cursor-pointer">
+                <input type="checkbox" id="has_manager" class="w-5 h-5 text-gov-600 rounded focus:ring-gov-500" onchange="toggleManagerInputs(); calculateAll();">
+                <span class="text-sm sm:text-base font-bold text-gov-900" id="lbl_manager_title">編列專案管理人</span>
+              </label>
+              <span id="mgr_type_badge" class="text-xs bg-sky-100 text-sky-800 px-2.5 py-1 rounded font-semibold">社會型專管 (月薪$32,530)</span>
+            </div>
+
+            <div id="mgr_inputs_container" class="space-y-3.5 hidden">
+              <div class="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">人數 (人)</label>
+                  <input type="number" id="count_mgr" min="0" value="1" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+                </div>
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">月數 (月)</label>
+                  <input type="number" id="months_mgr" min="0" max="12" value="12" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+                </div>
+              </div>
+              <div id="mgr_salary_hint" class="text-xs sm:text-sm text-slate-600 pt-1 border-t border-sky-200/60 flex justify-between">
+                <span>月薪補助 $32,530 元</span>
+                <span>勞職健保補助 $4,468/月</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 外部人事費用 (留用人員：新增核取方塊與折疊收合) -->
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div class="flex justify-between items-center">
+              <label class="flex items-center space-x-2.5 cursor-pointer">
+                <input type="checkbox" id="has_retained" class="w-5 h-5 text-gov-600 rounded focus:ring-gov-500" onchange="toggleRetainedInputs(); calculateAll();">
+                <span class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <i class="fa-solid fa-user-check text-slate-600"></i> 編列留用人員 (自籌/外部經費)
+                </span>
+              </label>
+              <span class="text-xs text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">如需留用需求才需填寫</span>
+            </div>
+
+            <!-- 輸入區域（預設隱藏） -->
+            <div id="retained_inputs_container" class="space-y-2.5 hidden pt-2 border-t border-slate-200/60">
+              <div class="grid grid-cols-2 gap-3.5 text-sm">
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">留用薪資自籌款 (元)</label>
+                  <input type="number" id="retained_wage" min="0" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+                </div>
+                <div>
+                  <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">留用保費自籌款 (元)</label>
+                  <input type="number" id="retained_ins" min="0" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+                </div>
+              </div>
+              <div class="text-xs text-slate-500 pt-0.5">
+                * 僅列於總表作為自籌/外部經費呈現，不計入向本部申請之補助款額度。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 2: 其他費用實施項目 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+          <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3.5 gap-2">
+            <div class="flex items-center space-x-2.5 text-gov-800 font-bold text-lg">
+              <span class="w-7 h-7 rounded-full bg-gov-100 text-gov-800 flex items-center justify-center text-sm font-extrabold">2</span>
+              <span>其他費用</span>
+            </div>
+            <!-- 右側即時顯示：其他費用總額上限與剩餘額度 (下拉時也能清楚對照) -->
+            <div class="flex items-center gap-2">
+              <div class="bg-sky-50 border border-sky-200 px-3 py-1 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm">
+                <span class="text-slate-500 font-medium">其他費用總額上限:</span>
+                <span id="badge_other_max" class="font-bold font-mono text-sky-800 text-sm sm:text-base">$0</span>
+                <span id="lbl_rate_ceiling" class="text-xs bg-sky-200/70 text-sky-900 px-1.5 py-0.5 rounded font-semibold">5%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 教育訓練費 -->
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5">
+            <div class="flex justify-between items-center text-sm font-bold text-slate-800">
+              <span>教育訓練費 (最高累計 46 小時)</span>
+              <span id="train_hours_badge" class="font-mono text-xs sm:text-sm px-2.5 py-0.5 rounded font-bold bg-slate-200 text-slate-700">0 / 46 小時</span>
+            </div>
+
+            <!-- 紅色剩餘/提醒文字 (動態顯示) -->
+            <div id="train_hours_alert" class="hidden text-xs sm:text-sm font-bold text-rose-600 flex items-center gap-1.5 py-1 px-2.5 bg-rose-50 rounded-lg border border-rose-200">
+              <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+              <span id="train_hours_alert_text">尚有 46 小時未編列</span>
+            </div>
+
+            <!-- 自籌款標籤顯示容器 (補上缺失的元素) -->
+            <div id="self_fund_badge_container" class="hidden text-xs sm:text-sm font-bold text-amber-800 flex items-center justify-between py-1.5 px-3 bg-amber-50 rounded-lg border border-amber-200">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-hand-holding-dollar text-amber-600"></i>
+                <span>訓練費含自籌款：$<span id="lbl_self_fund_amt">0</span> 元</span>
+              </span>
+              <button type="button" onclick="resetSelfFund()" class="text-xs text-amber-700 hover:text-amber-900 underline font-semibold">
+                取消自籌
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3.5 text-sm pt-1">
+              <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">內聘時數 (1,000元/時)</label>
+                <input type="number" id="train_internal_hours" min="0" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+              </div>
+              <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-600 block mb-1">外聘時數 (2,000元/時)</label>
+                <input type="number" id="train_external_hours" min="0" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+              </div>
+            </div>
+            <div id="train_warning" class="hidden text-sm text-rose-600 font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-base"></i> 警告：內聘與外聘合計時數已超過上限 46 小時！
+            </div>
+          </div>
+
+          <!-- 雜項費用輸入 -->
+          <div class="space-y-3.5 text-sm">
+            <div class="grid grid-cols-2 gap-3.5">
+              <div>
+                <label class="text-xs sm:text-sm text-slate-700 font-semibold block mb-1">
+                  行銷推展費 (申請補助款)
+                  <i class="fa-solid fa-circle-info text-slate-400" title="額度上限由法規規範"></i>
+                </label>
+                <input type="number" id="fee_marketing" value="5000" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+                <span class="text-xs text-slate-500 mt-1 block" id="lbl_marketing_hint">社會型上限 5,000 元</span>
+                <!-- 行銷推展費超標紅字警告 -->
+                <div id="marketing_warning" class="hidden text-xs sm:text-sm font-bold text-rose-600 flex items-center gap-1 mt-1.5 py-1 px-2 bg-rose-50 rounded border border-rose-200">
+                  <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+                  <span id="marketing_warning_text">已超過上限！請調降。</span>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs sm:text-sm text-slate-700 font-semibold block mb-1">郵電通訊費 (申請補助款)</label>
+                <input type="number" id="fee_postage" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll()">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3.5">
+              <div>
+                <label class="text-xs sm:text-sm text-slate-700 font-semibold block mb-1">印刷與裝訂費 (申請補助款)</label>
+                <input type="number" id="fee_printing" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll(false)">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs sm:text-sm text-slate-700 font-semibold block">
+                    材料費 (申請補助款)
+                    <span class="text-rose-600 font-bold">*不得超標</span>
+                  </label>
+                  <button type="button" onclick="autoFillMaterials()" class="text-xs text-sky-700 hover:text-sky-900 font-bold underline cursor-pointer">
+                    帶入10%
+                  </button>
+                </div>
+                <input type="number" id="fee_materials" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-semibold focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="calculateAll(false)">
+                <span class="text-xs text-slate-500 mt-1 block" id="lbl_materials_cap">上限為其他費用總額的 10% ($0)</span>
+              </div>
+            </div>
+
+            <!-- 新增「其他」費用輸入項：自動載入未編列餘額 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              <div class="sm:col-span-2 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <label class="text-xs sm:text-sm text-slate-800 font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-coins text-amber-500"></i>
+                    其他 (申請補助款)
+                    <span class="text-xs font-normal text-slate-500">自動載入未編列餘額，可自由微調</span>
+                  </label>
+                  <button type="button" onclick="autoFillOtherRest()" class="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-2 py-0.5 rounded shadow-sm font-semibold transition">
+                    重新載入未編列金額
+                  </button>
+                </div>
+                <div class="flex items-center gap-3">
+                  <input type="number" id="fee_other_custom" value="0" class="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-base font-bold text-slate-800 focus:ring-2 focus:ring-gov-600 focus:outline-none" oninput="onOtherCustomInput()">
+                </div>
+                <span class="text-xs text-slate-500 block">
+                  * 系統預設將其他費用剩餘額度自動補入本項，使補助款總額完整達標；若單位調高其他細項，本項將自動遞減。
+                </span>
+              </div>
+            </div>
+
+            <!-- 材料費檢核紅字提示 -->
+            <div id="material_warning" class="hidden p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-bold flex items-center gap-2">
+              <i class="fa-solid fa-circle-exclamation text-rose-500 text-base"></i>
+              <span id="material_warning_text">材料費已超過其他費用總額之 10%！請適當調降。</span>
+            </div>
+
+            <!-- 移動至此：其他費用超額轉自籌款專用操作區塊 (位於其他費用下方，填表單位一目了然) -->
+            <div id="card_excess_action_box" class="hidden p-4 bg-rose-50 border-2 border-rose-300 rounded-xl space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-bold text-rose-800 flex items-center gap-2">
+                  <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+                  <span>其他費用申請補助已超額 <span id="lbl_excess_diff" class="text-rose-600 text-base font-extrabold font-mono">$0</span> 元</span>
+                </div>
+                <button type="button" onclick="resetAllOtherSelfFund()" class="text-xs text-rose-700 underline hover:text-rose-900 font-bold">
+                  重置自籌款
+                </button>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">可選擇單一科目快速轉列，或將超額金額分配到多個科目。轉列只會調整原編列費用中的「自籌款／申請補助款」，不會增加所需經費。</p>
+              <div class="flex flex-wrap gap-2 border-b border-rose-200 pb-3">
+                <button type="button" id="mode_single_btn" onclick="setAllocationMode('single')" class="px-3 py-2 rounded-lg text-sm font-bold bg-rose-700 text-white">模式一：單一科目</button>
+                <button type="button" id="mode_multi_btn" onclick="setAllocationMode('multi')" class="px-3 py-2 rounded-lg text-sm font-bold bg-white text-rose-800 border border-rose-300">模式二：多科目分配</button>
+              </div>
+              <div id="single_allocation_panel" class="space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <label for="sel_self_fund_target" class="text-sm font-bold text-slate-700">轉列科目：</label>
+                  <select id="sel_self_fund_target" onchange="updateAllocationEditor()" class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold flex-1 min-w-36">
+                    <option value="train">教育訓練費</option><option value="marketing">行銷推展費</option><option value="postage">郵電通訊費</option><option value="printing">印刷及裝訂費</option><option value="materials">材料費</option><option value="other">其他</option>
+                  </select>
+                  <button type="button" onclick="applySelfFundAllocation()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold">一鍵全額轉自籌</button>
+                </div>
+                <p id="single_allocation_hint" class="text-xs text-slate-600"></p>
+              </div>
+              <div id="multi_allocation_panel" class="hidden space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="multi_allocation_fields"></div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
+                  <div class="bg-white rounded-lg p-2 border"><div class="text-slate-500">待轉列金額</div><strong id="alloc_required">0</strong></div>
+                  <div class="bg-white rounded-lg p-2 border"><div class="text-slate-500">已輸入</div><strong id="alloc_assigned">0</strong></div>
+                  <div class="bg-white rounded-lg p-2 border"><div class="text-slate-500">尚差／超出</div><strong id="alloc_remaining">0</strong></div>
+                </div>
+                <p id="multi_allocation_warning" class="text-xs font-semibold text-rose-700" role="alert"></p>
+                <div class="flex flex-wrap justify-end gap-2">
+                  <button type="button" onclick="clearAllocationDraft()" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-bold">清空輸入</button>
+                  <button type="button" id="confirm_multi_allocation" onclick="applyMultiSelfFundAllocation()" class="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed">確認多科目分配</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 目前各項科目自籌款摘要提示條 (若有設定自籌款時顯示) -->
+            <div id="other_self_fund_summary_badge" class="hidden p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs sm:text-sm font-semibold text-amber-900 flex justify-between items-center">
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-check text-amber-600 text-base"></i>
+                <span>已設定其他費用自籌款合計：$<span id="lbl_total_other_own">0</span> 元 (<span id="lbl_own_detail"></span>)</span>
+              </span>
+              <button type="button" onclick="resetAllOtherSelfFund()" class="text-xs text-amber-800 underline font-bold hover:text-amber-950">
+                清除自籌
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右側：檢核面板與標準概算表預覽 -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 檢核看板 (KPI Cards) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced text-gov-600 text-lg"></i>
+              即時法規額度檢核看板
+            </h3>
+            <span id="overall_status_pill" class="text-xs sm:text-sm px-3 py-1.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
+              <i class="fa-solid fa-circle-check mr-1"></i>合規無誤
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- 用人費用補助合計 -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <span class="text-xs sm:text-sm font-medium text-slate-500 block mb-1">用人費用補助款合計</span>
+              <div class="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono" id="kpi_labor_sub">$0</div>
+              <span class="text-xs text-slate-400 mt-1 block">作為其他費用之計算基準</span>
+            </div>
+            
+            <!-- 其他費用補助額度 -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs sm:text-sm font-medium text-slate-500" id="kpi_ceiling_label">其他費用額度上限 (5%)</span>
+              </div>
+              <div class="text-xl sm:text-2xl font-extrabold text-sky-700 font-mono" id="kpi_other_max">$0</div>
+              <span class="text-xs text-slate-400 mt-1 block">法定可申請之最大金額</span>
+            </div>
+
+            <!-- 剩餘可用其他費用額度 (預設給予柔和綠色底色與邊框) -->
+            <div class="p-4 rounded-xl border bg-emerald-50 border-emerald-300 text-emerald-900 transition-colors" id="kpi_remain_box">
+              <span class="text-xs sm:text-sm font-semibold block mb-1" id="kpi_remain_title">其他費用剩餘可用額度</span>
+              <div class="text-xl sm:text-2xl font-extrabold font-mono text-emerald-700" id="kpi_other_remain">$0</div>
+              <span class="text-xs mt-1 block text-emerald-700/80" id="kpi_remain_sub">尚可編列其他項目</span>
+            </div>
+          </div>
+
+          <!-- 申請補助款總計一致性檢核：即時顯示預期值、實際值與差額 -->
+          <div id="subsidy_total_warning" class="hidden p-3 bg-rose-50 border border-rose-300 rounded-xl text-sm text-rose-800 font-semibold" role="alert" aria-live="polite">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i>
+            <span id="subsidy_total_warning_text"></span>
+          </div>
+
+          <!-- 看板超支提示條：引導往左側操作 -->
+          <div id="overbudget_banner" class="hidden p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs sm:text-sm text-rose-800 font-bold flex items-center justify-between gap-2">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+              <span>其他費用申請總額已超過規定額度！請至左側「其他費用」下方將超額轉為自籌款。</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 輸出控制按鈕列與概算表預覽卡片 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs sm:text-sm font-bold text-slate-700 mr-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-export text-gov-600"></i>
+                產出格式操作：
+              </span>
+              <button type="button" onclick="copyTableForWord()" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl text-sm font-bold shadow transition flex items-center gap-2">
+                <i class="fa-regular fa-copy text-amber-400"></i>
+                <span>複製乾淨表格 (貼入 Word)</span>
+              </button>
+              <button type="button" onclick="exportToExcel()" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white rounded-xl text-sm font-bold shadow transition flex items-center gap-2">
+                <i class="fa-solid fa-file-excel text-emerald-200"></i>
+                <span>下載 Excel 報表 (.xlsx)</span>
+              </button>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs sm:text-sm font-semibold text-slate-600">計畫年度：</span>
+              <input type="number" id="plan_year" value="1" min="1" max="10" class="w-16 border rounded-lg px-2.5 py-1 text-center font-bold text-base focus:ring-2 focus:ring-gov-600" oninput="calculateAll()">
+              <span class="text-xs sm:text-sm font-mono font-bold bg-gov-100 text-gov-800 px-3 py-1 rounded-full">單位：新臺幣元</span>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto p-4 sm:p-5">
+            <div class="text-center text-lg font-bold text-slate-900 mb-3" id="display_heading_title">
+              第 1 年經費概算表（社會型）
+            </div>
+            <table id="budget-table" class="w-full text-sm text-left border-collapse border-2 border-slate-800">
+              <thead>
+                <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-800 text-center text-sm sm:text-base">
+                  <th colspan="2" class="border border-slate-800 p-2.5 w-56">項目</th>
+                  <th colspan="3" class="border border-slate-800 p-2.5 w-80">金額</th>
+                  <th rowspan="2" class="border border-slate-800 p-2.5">備註</th>
+                </tr>
+                <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-800 text-center text-sm">
+                  <th class="border border-slate-800 p-2 w-20">大類</th>
+                  <th class="border border-slate-800 p-2 w-36">細項</th>
+                  <th class="border border-slate-800 p-2 w-28">所需經費</th>
+                  <th class="border border-slate-800 p-2 w-24">自籌款</th>
+                  <th class="border border-slate-800 p-2 w-28">申請補助款</th>
+                </tr>
+              </thead>
+              <tbody id="budget_tbody" class="divide-y divide-slate-800 font-sans text-sm">
+                <!-- 動態注入由 JavaScript 產生 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-xs text-slate-400 no-print">
+    多元就業開發方案 經費概算試算輔助工具 ‧ 邏輯已校正自籌款計算並依勞保級距動態更新
+  </footer>
+
+  <!-- 應用程式核心邏輯腳本 -->
+  <script>
+    // 全域狀態
+    let currentPlanType = 'social'; // 'social' | 'economic'
+    let isOtherManualEdited = false; // 是否由使用者手動修改過「其他」
+    let lastMaxOtherAllowance = 0;   // 記錄前次額度上限，用於判定何時刷新材料費 10%
+    let currentCalculatedOtherMax = 0; // 存儲當前計算出的其他費用上限 (用於帶入 10%)
+
+    // 各項目自籌款存儲物件 (單位可自由分配超額自籌到指定科目)
+    let otherOwnCosts = {
+      train: 0,
+      marketing: 0,
+      postage: 0,
+      printing: 0,
+      materials: 0,
+      other: 0
+    };
+
+    // 格式化千分位
+    function fmt(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Math.round(num).toLocaleString('zh-TW');
+    }
+
+    // 數值解析防呆
+    function val(id) {
+      const el = document.getElementById(id);
+      if (!el) return 0;
+      const parsed = parseFloat(el.value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+
+    // 提示通知視窗
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = msg;
+      if (isSuccess) {
+        toastIcon.className = "fa-solid fa-check text-emerald-400 text-lg";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+      }
+
+      toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-[-20px]');
+      }, 3000);
+    }
+
+    // 切換方案類型 (社會型 / 經濟型)
+    function switchPlanType(type) {
+      currentPlanType = type;
+      const tabSocial = document.getElementById('tab-social');
+      const tabEcon = document.getElementById('tab-economic');
+      const previewTitle = document.getElementById('display_heading_title');
+      const mgrTitle = document.getElementById('lbl_manager_title');
+      const mgrBadge = document.getElementById('mgr_type_badge');
+      const mgrSalaryHint = document.getElementById('mgr_salary_hint');
+      const feeMarketing = document.getElementById('fee_marketing');
+      const lblMarketingHint = document.getElementById('lbl_marketing_hint');
+      const lblRateCeiling = document.getElementById('lbl_rate_ceiling');
+
+      // 只切換選取狀態，版面樣式交給 CSS 統一管理
+      tabSocial.classList.toggle('is-active', type === 'social');
+      tabEcon.classList.toggle('is-active', type === 'economic');
+      tabSocial.setAttribute('aria-pressed', String(type === 'social'));
+      tabEcon.setAttribute('aria-pressed', String(type === 'economic'));
+
+      if (type === 'social') {
+        
+        if (previewTitle) previewTitle.innerText = `第 ${val('plan_year') || 1} 年經費概算表（社會型）`;
+        mgrTitle.innerText = "編列專案管理人";
+        mgrBadge.innerText = "社會型專管 (月薪$32,530)";
+        mgrBadge.className = "text-xs bg-sky-100 text-sky-800 px-2.5 py-1 rounded font-semibold";
+        if (mgrSalaryHint) {
+          mgrSalaryHint.innerHTML = "<span>月薪補助 $32,530 元</span><span>勞職健保補助 $4,468/月</span>";
+        }
+        feeMarketing.value = 5000;
+        lblMarketingHint.innerText = "社會型上限 5,000 元";
+        lblRateCeiling.innerText = "其他費用上限 5%";
+      } else {
+        
+        if (previewTitle) previewTitle.innerText = `第 ${val('plan_year') || 1} 年經費概算表（經濟型）`;
+        mgrTitle.innerText = "編列專案經理人";
+        mgrBadge.innerText = "經濟型專經 (月薪$38,769)";
+        mgrBadge.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded font-semibold";
+        if (mgrSalaryHint) {
+          mgrSalaryHint.innerHTML = "<span>月薪補助 $38,769 元</span><span>勞職健保補助 $5,380/月</span>";
+        }
+        feeMarketing.value = 15000;
+        lblMarketingHint.innerText = "經濟型上限 15,000 元";
+        lblRateCeiling.innerText = "其他費用上限 15%";
+      }
+
+      calculateAll();
+    }
+
+    // 展開/收合參數面板
+    function toggleParams() {
+      const panel = document.getElementById('params-panel');
+      const text = document.getElementById('param-toggle-text');
+      const icon = document.getElementById('param-toggle-icon');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        text.innerText = '收合設定';
+        icon.classList.add('rotate-180');
+      } else {
+        panel.classList.add('hidden');
+        text.innerText = '展開設定';
+        icon.classList.remove('rotate-180');
+      }
+    }
+
+    // 重設參數回預設值 (116年度標準)
+    function resetParams() {
+      document.getElementById('p_hourlyWage').value = 205;
+      document.getElementById('p_socialMgrWage').value = 32530;
+      document.getElementById('p_econMgrWageMaster').value = 38769;
+      document.getElementById('p_ins150Sub').value = 4147;
+      document.getElementById('p_wage26Own').value = 5330;
+      document.getElementById('p_ins110Sub').value = 3080;
+      document.getElementById('p_mgrInsSocial').value = 4468;
+      document.getElementById('p_mgrInsEconMaster').value = 5380;
+      calculateAll();
+      showToast('已恢復 116 年度最新預設費率與級距參數');
+    }
+
+    // 專管/專經勾選切換
+    function toggleManagerInputs() {
+      const checked = document.getElementById('has_manager').checked;
+      const container = document.getElementById('mgr_inputs_container');
+      if (checked) {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    // 部分工時 (110小時) 勾選切換
+    function togglePartTimeInputs() {
+      const checked = document.getElementById('has_part_time').checked;
+      const container = document.getElementById('part_time_inputs_container');
+      const countInput = document.getElementById('count_110');
+      if (checked) {
+        container.classList.remove('hidden');
+        if (val('count_110') === 0) countInput.value = 1;
+      } else {
+        container.classList.add('hidden');
+        countInput.value = 0;
+      }
+    }
+
+    // 留用人員勾選切換
+    function toggleRetainedInputs() {
+      const checked = document.getElementById('has_retained').checked;
+      const container = document.getElementById('retained_inputs_container');
+      const wageInput = document.getElementById('retained_wage');
+      const insInput = document.getElementById('retained_ins');
+      if (checked) {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+        // 取消編列時清空金額，避免重新勾選後誤沿用舊資料。
+        wageInput.value = 0;
+        insInput.value = 0;
+      }
+    }
+
+    // 手動修改「其他」欄位時標記狀態
+    function onOtherCustomInput() {
+      isOtherManualEdited = true;
+      calculateAll(false);
+    }
+
+    // 一鍵手動重設/重新載入「其他」未編列餘額
+    function autoFillOtherRest() {
+      isOtherManualEdited = false;
+      calculateAll(true);
+      showToast('已將未編列之剩餘額度完整載入「其他」');
+    }
+
+    // 一鍵帶入材料費 10% 上限 (修復讀取上限邏輯)
+    function autoFillMaterials() {
+      const cap10 = Math.round(currentCalculatedOtherMax * 0.1);
+      document.getElementById('fee_materials').value = cap10;
+      calculateAll(false);
+      showToast(`已將材料費載入 10% 上限金額：$${fmt(cap10)} 元`);
+    }
+
+    const allocationNames = {train:'教育訓練費',marketing:'行銷推展費',postage:'郵電通訊費',printing:'印刷及裝訂費',materials:'材料費',other:'其他'};
+    const allocationKeys = Object.keys(allocationNames);
+    let allocationMode = 'single';
+    let allocationDraft = Object.fromEntries(allocationKeys.map(k => [k, 0]));
+    let allocationLimits = Object.fromEntries(allocationKeys.map(k => [k, 0]));
+    let currentExcessToAllocate = 0;
+    let allocationInputsBuilt = false;
+
+    function setAllocationMode(mode) {
+      allocationMode = mode;
+      document.getElementById('single_allocation_panel').classList.toggle('hidden', mode !== 'single');
+      document.getElementById('multi_allocation_panel').classList.toggle('hidden', mode !== 'multi');
+      document.getElementById('mode_single_btn').className = 'px-3 py-2 rounded-lg text-sm font-bold ' + (mode === 'single' ? 'bg-rose-700 text-white' : 'bg-white text-rose-800 border border-rose-300');
+      document.getElementById('mode_multi_btn').className = 'px-3 py-2 rounded-lg text-sm font-bold ' + (mode === 'multi' ? 'bg-rose-700 text-white' : 'bg-white text-rose-800 border border-rose-300');
+      if (mode === 'multi') clearAllocationDraft();
+      updateAllocationEditor();
+    }
+
+    function buildAllocationInputs() {
+      if (allocationInputsBuilt) return;
+      const container = document.getElementById('multi_allocation_fields');
+      allocationKeys.forEach(key => {
+        const wrap = document.createElement('div');
+        wrap.className = 'bg-white border border-slate-200 rounded-lg p-2';
+        const label = document.createElement('label');
+        label.className = 'block text-xs font-semibold mb-1 text-slate-700';
+        label.htmlFor = 'alloc_' + key;
+        label.textContent = allocationNames[key];
+        const input = document.createElement('input');
+        input.type = 'number'; input.min = '0'; input.step = '1'; input.value = '0';
+        input.id = 'alloc_' + key;
+        input.className = 'w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm';
+        input.addEventListener('input', () => {
+          allocationDraft[key] = Number(input.value);
+          updateAllocationEditor(false);
+        });
+        const hint = document.createElement('div');
+        hint.id = 'alloc_hint_' + key;
+        hint.className = 'text-xs text-slate-500 mt-1';
+        wrap.append(label, input, hint);
+        container.appendChild(wrap);
+      });
+      allocationInputsBuilt = true;
+    }
+
+    function clearAllocationDraft() {
+      allocationDraft = Object.fromEntries(allocationKeys.map(k => [k, 0]));
+      if (allocationInputsBuilt) allocationKeys.forEach(k => document.getElementById('alloc_' + k).value = 0);
+      updateAllocationEditor(false);
+    }
+
+    function updateAllocationEditor(syncInputs = false) {
+      if (!document.getElementById('card_excess_action_box')) return;
+      buildAllocationInputs();
+      const target = document.getElementById('sel_self_fund_target').value;
+      document.getElementById('single_allocation_hint').textContent = `${allocationNames[target]}尚可轉列 ${fmt(allocationLimits[target])} 元；目前超額 ${fmt(currentExcessToAllocate)} 元。`;
+      let assigned = 0;
+      const issues = [];
+      for (const key of allocationKeys) {
+        const v = allocationDraft[key];
+        const available = allocationLimits[key];
+        const input = document.getElementById('alloc_' + key);
+        input.max = available;
+        if (syncInputs) input.value = v;
+        document.getElementById('alloc_hint_' + key).textContent = `本次最多可轉列 ${fmt(available)} 元`;
+        if (!Number.isFinite(v) || !Number.isInteger(v) || v < 0) issues.push(`${allocationNames[key]}須輸入非負整數`);
+        else if (v > available) issues.push(`${allocationNames[key]}超過原編列可轉列金額`);
+        if (Number.isFinite(v)) assigned += v;
+      }
+      const remaining = currentExcessToAllocate - assigned;
+      document.getElementById('alloc_required').textContent = fmt(currentExcessToAllocate);
+      document.getElementById('alloc_assigned').textContent = fmt(assigned);
+      document.getElementById('alloc_remaining').textContent = remaining > 0 ? `不足 ${fmt(remaining)}` : remaining < 0 ? `超出 ${fmt(-remaining)}` : '0（完成）';
+      if (currentExcessToAllocate <= 0) issues.push('目前沒有待轉列的超額');
+      else if (remaining !== 0) issues.push(remaining > 0 ? `尚有 ${fmt(remaining)} 元未分配` : `分配超過超額 ${fmt(-remaining)} 元`);
+      document.getElementById('multi_allocation_warning').textContent = issues.join('；') || '金額符合，可確認轉列。';
+      document.getElementById('confirm_multi_allocation').disabled = issues.length > 0;
+      return issues.length === 0;
+    }
+
+    function applySelfFundAllocation() {
+      const target = document.getElementById('sel_self_fund_target').value;
+      const excess = currentExcessToAllocate;
+      if (!(excess > 0)) return showToast('目前沒有超額需要轉列', false);
+      if (allocationLimits[target] < excess) return showToast(`${allocationNames[target]}最多只能轉列 ${fmt(allocationLimits[target])} 元，請改用多科目分配或調整原編列金額。`, false);
+      otherOwnCosts[target] += excess;
+      // 轉列後不得被「其他」自動補滿邏輯抵銷
+      isOtherManualEdited = true;
+      calculateAll(false);
+      showToast(`已將 ${fmt(excess)} 元轉入${allocationNames[target]}自籌款`);
+    }
+
+    function applyMultiSelfFundAllocation() {
+      if (!updateAllocationEditor()) return showToast('分配尚未完成或超出科目可用額度', false);
+      for (const key of allocationKeys) otherOwnCosts[key] += allocationDraft[key];
+      isOtherManualEdited = true;
+      clearAllocationDraft();
+      calculateAll(false);
+      showToast('多科目自籌分配完成，已更新概算表');
+    }
+
+    // 清除所有其他費用的自籌款
+    function resetAllOtherSelfFund() {
+      otherOwnCosts = {
+        train: 0,
+        marketing: 0,
+        postage: 0,
+        printing: 0,
+        materials: 0,
+        other: 0
+      };
+      calculateAll(false);
+      clearAllocationDraft();
+      showToast('已清除其他費用之所有自籌款');
+    }
+
+    // 主計算邏輯與表格生成
+    function calculateAll(shouldAutoBalance = true) {
+      // 讀取設定參數
+      const hourlyWage = val('p_hourlyWage');
+      const p_ins150Sub = val('p_ins150Sub');
+      const p_wage26Own = val('p_wage26Own');
+      const p_ins110Sub = val('p_ins110Sub');
+
+      // 計算每人每月津貼
+      const monthlyWage150Sub = Math.round(150 * hourlyWage); // 30,750
+      const monthlyWage26Own = p_wage26Own; // 5,330
+
+      // 更新 badge 提示
+      const badge176 = document.getElementById('badge_176_split');
+      if (badge176) {
+        badge176.innerText = `補助$${fmt(monthlyWage150Sub)} + 自籌$${fmt(monthlyWage26Own)}`;
+      }
+
+      // 讀取人員數量與月數
+      const c176 = val('count_176');
+      const m176 = val('months_176');
+      const c150 = 0; // 已精簡移除 150h 單獨選項
+      const m150 = 0;
+
+      // 部分工時受核取方塊控制
+      const hasPartTime = document.getElementById('has_part_time')?.checked || false;
+      const c110 = hasPartTime ? val('count_110') : 0;
+      const m110 = hasPartTime ? val('months_110') : 0;
+
+      // 1. 進用人員工作津貼計算
+      const wage176_sub = c176 * m176 * monthlyWage150Sub;
+      const wage176_own = c176 * m176 * monthlyWage26Own;
+      const wage176_total = wage176_sub + wage176_own;
+
+      const wage150_sub = 0;
+      const wage150_own = 0;
+      const wage150_total = 0;
+
+      const wage110_sub = c110 * m110 * (110 * hourlyWage);
+      const wage110_own = 0;
+      const wage110_total = wage110_sub;
+
+      const subtotal_worker_wage_total = wage176_total + wage150_total + wage110_total;
+      const subtotal_worker_wage_own = wage176_own + wage150_own + wage110_own;
+      const subtotal_worker_wage_sub = wage176_sub + wage150_sub + wage110_sub;
+
+      // 2. 進用人員勞職健保費：同一投保級距，每月 4,147 元全額補助，26h 無須自籌保費
+      const monthlyWorkerIns176 = p_ins150Sub;
+      const ins176_total = c176 * m176 * monthlyWorkerIns176;
+      const ins176_own = 0;
+      const ins176_sub = c176 * m176 * p_ins150Sub;
+
+      const ins150_sub = 0;
+      const ins150_own = 0;
+      const ins150_total = 0;
+
+      const ins110_sub = c110 * m110 * p_ins110Sub;
+      const ins110_own = 0;
+      const ins110_total = ins110_sub;
+
+      const subtotal_worker_ins_total = ins176_total + ins150_total + ins110_total;
+      const subtotal_worker_ins_own = ins176_own + ins150_own + ins110_own;
+      const subtotal_worker_ins_sub = ins176_sub + ins150_sub + ins110_sub;
+
+      // 3. 專案管理人/經理人計算
+      const hasMgr = document.getElementById('has_manager').checked;
+      let mgrMonthlyWage = 0;
+      let mgrMonthlyIns = 0;
+      let mgrTitleName = (currentPlanType === 'social') ? '專案管理人' : '專案經理人';
+
+      if (currentPlanType === 'social') {
+        mgrMonthlyWage = val('p_socialMgrWage');
+        mgrMonthlyIns = val('p_mgrInsSocial');
+      } else {
+        mgrMonthlyWage = val('p_econMgrWageMaster');
+        mgrMonthlyIns = val('p_mgrInsEconMaster');
+      }
+
+      const cMgr = hasMgr ? val('count_mgr') : 0;
+      const mMgr = hasMgr ? val('months_mgr') : 0;
+
+      const mgr_wage_sub = cMgr * mMgr * mgrMonthlyWage;
+      const mgr_wage_own = 0;
+      const mgr_wage_total = mgr_wage_sub;
+
+      const mgr_ins_sub = cMgr * mMgr * mgrMonthlyIns;
+      const mgr_ins_own = 0;
+      const mgr_ins_total = mgr_ins_sub;
+
+      // 4. 留用人員費用
+      const hasRetained = document.getElementById('has_retained')?.checked || false;
+      const retainedWageOwn = hasRetained ? val('retained_wage') : 0;
+      const retainedInsOwn = hasRetained ? val('retained_ins') : 0;
+
+      // 5. 用人費用補助款合計 (依目前輸入參數動態計算進用人員與專案管理人/經理人補助合計)
+      const totalLaborSubsidy = subtotal_worker_wage_sub + subtotal_worker_ins_sub + mgr_wage_sub + mgr_ins_sub;
+
+      // 6. 其他費用額度上限 (依用人費用補助款合計與方案類型動態計算)
+      const otherRate = (currentPlanType === 'social') ? 0.05 : 0.15;
+      const maxOtherAllowance = Math.round(totalLaborSubsidy * otherRate);
+      currentCalculatedOtherMax = maxOtherAllowance; // 暫存給「帶入 10%」使用
+
+      // 材料費 10% 上限更新
+      const maxMaterialsAllowed = Math.round(maxOtherAllowance * 0.1);
+      const lblMaterialsCap = document.getElementById('lbl_materials_cap');
+      if (lblMaterialsCap) {
+        lblMaterialsCap.innerText = `上限為其他費用總額的 10% ($${fmt(maxMaterialsAllowed)})`;
+      }
+
+      if (lastMaxOtherAllowance !== maxOtherAllowance) {
+        lastMaxOtherAllowance = maxOtherAllowance;
+      }
+
+      // 7. 其他費用計算
+      const trainIntHours = val('train_internal_hours');
+      const trainExtHours = val('train_external_hours');
+      const totalTrainHours = trainIntHours + trainExtHours;
+
+      const trainIntCost = trainIntHours * 1000;
+      const trainExtCost = trainExtHours * 2000;
+      const trainTotalCost = trainIntCost + trainExtCost; // 所需經費
+
+      // 各科目輸入金額 (所需經費總額)
+      const feeMarketingTotal = val('fee_marketing');
+      const feePostageTotal = val('fee_postage');
+      const feePrintingTotal = val('fee_printing');
+      const feeMaterialsTotal = val('fee_materials');
+
+      // 扣除各項目自籌後的申請補助款
+      const trainOwnCost = Math.min(otherOwnCosts.train || 0, trainTotalCost);
+      const trainSubCost = Math.max(0, trainTotalCost - trainOwnCost);
+
+      const feeMarketingOwn = Math.min(otherOwnCosts.marketing || 0, feeMarketingTotal);
+      const feeMarketingSub = Math.max(0, feeMarketingTotal - feeMarketingOwn);
+
+      const feePostageOwn = Math.min(otherOwnCosts.postage || 0, feePostageTotal);
+      const feePostageSub = Math.max(0, feePostageTotal - feePostageOwn);
+
+      const feePrintingOwn = Math.min(otherOwnCosts.printing || 0, feePrintingTotal);
+      const feePrintingSub = Math.max(0, feePrintingTotal - feePrintingOwn);
+
+      const feeMaterialsOwn = Math.min(otherOwnCosts.materials || 0, feeMaterialsTotal);
+      const feeMaterialsSub = Math.max(0, feeMaterialsTotal - feeMaterialsOwn);
+
+      // 自籌款摘要標籤顯示
+      const totalOtherOwn = trainOwnCost + feeMarketingOwn + feePostageOwn + feePrintingOwn + feeMaterialsOwn + (otherOwnCosts.other || 0);
+      const selfFundSummaryBadge = document.getElementById('other_self_fund_summary_badge');
+      const lblTotalOtherOwn = document.getElementById('lbl_total_other_own');
+      const lblOwnDetail = document.getElementById('lbl_own_detail');
+
+      if (selfFundSummaryBadge) {
+        if (totalOtherOwn > 0) {
+          selfFundSummaryBadge.classList.remove('hidden');
+          if (lblTotalOtherOwn) lblTotalOtherOwn.innerText = fmt(totalOtherOwn);
+          if (lblOwnDetail) {
+            let details = [];
+            if (trainOwnCost > 0) details.push(`訓練費 $${fmt(trainOwnCost)}`);
+            if (feeMarketingOwn > 0) details.push(`行銷費 $${fmt(feeMarketingOwn)}`);
+            if (feePostageOwn > 0) details.push(`郵電費 $${fmt(feePostageOwn)}`);
+            if (feePrintingOwn > 0) details.push(`印刷費 $${fmt(feePrintingOwn)}`);
+            if (feeMaterialsOwn > 0) details.push(`材料費 $${fmt(feeMaterialsOwn)}`);
+            if (otherOwnCosts.other > 0) details.push(`其他 $${fmt(otherOwnCosts.other)}`);
+            lblOwnDetail.innerText = details.join('、');
+          }
+        } else {
+          selfFundSummaryBadge.classList.add('hidden');
+        }
+      }
+
+      // 訓練時數提示
+      const trainWarningEl = document.getElementById('train_warning');
+      const trainBadgeEl = document.getElementById('train_hours_badge');
+      const trainAlertEl = document.getElementById('train_hours_alert');
+      const trainAlertText = document.getElementById('train_hours_alert_text');
+
+      trainBadgeEl.innerText = `${totalTrainHours} / 46 小時`;
+
+      if (totalTrainHours > 46) {
+        trainWarningEl.classList.remove('hidden');
+        trainBadgeEl.className = "font-mono text-xs px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold";
+        if (trainAlertEl) {
+          trainAlertEl.classList.remove('hidden');
+          trainAlertEl.className = "text-xs sm:text-sm font-bold text-rose-700 flex items-center gap-1.5 py-1 px-2.5 bg-rose-100 rounded-lg border border-rose-300";
+          trainAlertText.innerText = `已超過上限！目前已編寫 ${totalTrainHours} 小時，超出 ${totalTrainHours - 46} 小時`;
+        }
+      } else {
+        trainWarningEl.classList.add('hidden');
+        trainBadgeEl.className = "font-mono text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700";
+
+        if (totalTrainHours > 0 && totalTrainHours < 46) {
+          trainAlertEl.classList.remove('hidden');
+          trainAlertEl.className = "text-xs sm:text-sm font-bold text-sky-700 flex items-center gap-1.5 py-1 px-2.5 bg-sky-50 rounded-lg border border-sky-200";
+          trainAlertText.innerHTML = `<i class="fa-solid fa-clock text-sky-600"></i> 已編列 ${totalTrainHours} 小時`;
+        } else if (totalTrainHours === 46) {
+          trainAlertEl.classList.remove('hidden');
+          trainAlertEl.className = "text-xs sm:text-sm font-bold text-emerald-700 flex items-center gap-1.5 py-1 px-2.5 bg-emerald-50 rounded-lg border border-emerald-200";
+          trainAlertText.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> 已編列 46 小時 (滿額)';
+        } else {
+          trainAlertEl.classList.add('hidden');
+        }
+      }
+
+      // 扣除訓練補助款後的前五項申請補助款總和
+      const subtotalOtherBeforeRest = trainSubCost + feeMarketingSub + feePostageSub + feePrintingSub + feeMaterialsSub;
+
+      // 「其他」欄位補滿邏輯
+      const otherCustomInput = document.getElementById('fee_other_custom');
+      let feeOtherTotal = val('fee_other_custom');
+      let feeOtherOwn = Math.min(otherOwnCosts.other || 0, feeOtherTotal);
+
+      if (!isOtherManualEdited || shouldAutoBalance) {
+        const autoRemain = maxOtherAllowance - subtotalOtherBeforeRest + feeOtherOwn;
+        feeOtherTotal = (autoRemain > 0) ? autoRemain : 0;
+        if (otherCustomInput) otherCustomInput.value = feeOtherTotal;
+      }
+      const feeOtherSub = Math.max(0, feeOtherTotal - feeOtherOwn);
+
+      // 行銷推展費檢核
+      const maxMarketingAllowed = (currentPlanType === 'social') ? 5000 : 15000;
+      const isMarketingOver = (feeMarketingTotal > maxMarketingAllowed);
+      const marketingWarningEl = document.getElementById('marketing_warning');
+      const marketingWarningText = document.getElementById('marketing_warning_text');
+
+      if (isMarketingOver) {
+        marketingWarningEl.classList.remove('hidden');
+        marketingWarningText.innerText = `已超過上限（最高 $${fmt(maxMarketingAllowed)} 元，已超出 $${fmt(feeMarketingTotal - maxMarketingAllowed)} 元）！請調降。`;
+      } else {
+        marketingWarningEl.classList.add('hidden');
+      }
+
+      // 其他費用申請總額（僅計補助款）
+      const otherTotalSub = subtotalOtherBeforeRest + feeOtherSub;
+      const remainingAllowance = maxOtherAllowance - otherTotalSub;
+      // 本次最多可轉列的金額 = 各科目原編列總額－已轉列自籌款。
+      // 避免轉列高於原始費用，使補助款出現負值或未實際扣抵。
+      currentExcessToAllocate = Math.max(0, -remainingAllowance);
+      allocationLimits = {
+        train: Math.max(0, trainTotalCost - trainOwnCost),
+        marketing: Math.max(0, feeMarketingTotal - feeMarketingOwn),
+        postage: Math.max(0, feePostageTotal - feePostageOwn),
+        printing: Math.max(0, feePrintingTotal - feePrintingOwn),
+        materials: Math.max(0, feeMaterialsTotal - feeMaterialsOwn),
+        other: Math.max(0, feeOtherTotal - feeOtherOwn)
+      };
+      updateAllocationEditor();
+
+      // 材料費檢核 (以補助款檢核)
+      const materialWarningEl = document.getElementById('material_warning');
+      const materialWarningText = document.getElementById('material_warning_text');
+      const isMaterialOver = (maxOtherAllowance > 0 && feeMaterialsSub > maxMaterialsAllowed);
+
+      if (isMaterialOver) {
+        materialWarningEl.classList.remove('hidden');
+        materialWarningText.innerText = `材料費（$${fmt(feeMaterialsSub)}）已超過其他費用額度上限之 10%（上限為 $${fmt(maxMaterialsAllowed)}）！請調降。`;
+      } else {
+        materialWarningEl.classList.add('hidden');
+      }
+
+      // 預算超支警示與「超額轉自籌款專用操作卡片」顯示 (位於左側其他費用卡片下方)
+      const isOverBudget = remainingAllowance < 0;
+      const overbudgetBanner = document.getElementById('overbudget_banner');
+      const cardExcessActionBox = document.getElementById('card_excess_action_box');
+      const lblExcessDiff = document.getElementById('lbl_excess_diff');
+
+      if (isOverBudget) {
+        const excessVal = Math.abs(remainingAllowance);
+        if (overbudgetBanner) overbudgetBanner.classList.remove('hidden');
+        if (cardExcessActionBox) {
+          cardExcessActionBox.classList.remove('hidden');
+          if (lblExcessDiff) lblExcessDiff.innerText = fmt(excessVal);
+          // 儲存原始差額數字供分配按鈕使用
+          let hiddenInput = document.getElementById('lbl_excess_diff_raw');
+          if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = 'lbl_excess_diff_raw';
+            cardExcessActionBox.appendChild(hiddenInput);
+          }
+          hiddenInput.value = excessVal;
+        }
+      } else {
+        if (overbudgetBanner) overbudgetBanner.classList.add('hidden');
+        if (cardExcessActionBox) cardExcessActionBox.classList.add('hidden');
+      }
+
+      // 更新卡片 2 頂部與 KPI 儀表板中的「其他費用總額」
+      const badgeOtherMax = document.getElementById('badge_other_max');
+      if (badgeOtherMax) {
+        badgeOtherMax.innerText = `$${fmt(maxOtherAllowance)}`;
+      }
+
+      document.getElementById('kpi_labor_sub').innerText = `$${fmt(totalLaborSubsidy)}`;
+      document.getElementById('kpi_ceiling_label').innerText = `其他費用額度上限 (${(otherRate*100).toFixed(0)}%)`;
+      document.getElementById('kpi_other_max').innerText = `$${fmt(maxOtherAllowance)}`;
+      
+      const kpiRemainBox = document.getElementById('kpi_remain_box');
+      const kpiOtherRemain = document.getElementById('kpi_other_remain');
+      const kpiRemainTitle = document.getElementById('kpi_remain_title');
+      const kpiRemainSub = document.getElementById('kpi_remain_sub');
+      const overallStatusPill = document.getElementById('overall_status_pill');
+
+      // 依使用者指定規則：總計申請補助款 = 用人補助小計 + 其他費用合計；
+      // 且須等於 用人費用補助款合計 + 其他費用額度上限 (社會 5% / 經濟 15%)。
+      const totalCheck = subsidyCheck(totalLaborSubsidy, otherTotalSub, maxOtherAllowance);
+      const totalWarning = document.getElementById('subsidy_total_warning');
+      const totalWarningText = document.getElementById('subsidy_total_warning_text');
+      if (totalWarning && totalWarningText) {
+        totalWarning.classList.toggle('hidden', totalCheck.ok);
+        if (!totalCheck.ok) {
+          totalWarningText.innerText = `申請補助款總計錯誤：實際 $${fmt(totalCheck.actual)} 元，應為 $${fmt(totalCheck.expected)} 元（用人 $${fmt(totalLaborSubsidy)} ＋ 其他費用上限 $${fmt(maxOtherAllowance)}）；${totalCheck.diff > 0 ? '超出' : '不足'} $${fmt(Math.abs(totalCheck.diff))} 元。`;
+        }
+      }
+
+
+      if (isOverBudget) {
+        kpiRemainBox.className = "p-4 rounded-xl border bg-rose-50 border-rose-300 text-rose-800 transition-colors";
+        kpiOtherRemain.className = "text-xl sm:text-2xl font-extrabold font-mono text-rose-600";
+        kpiOtherRemain.innerText = `-$${fmt(Math.abs(remainingAllowance))}`;
+        kpiRemainTitle.innerText = "超支金額 (需調降/轉自籌)";
+        kpiRemainSub.innerText = "請至左側下方選擇分配科目並轉自籌";
+        overallStatusPill.className = "text-xs sm:text-sm px-3 py-1.5 rounded-full font-bold bg-rose-100 text-rose-700";
+        overallStatusPill.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>錯誤：補助款超額';
+      } else {
+        kpiRemainBox.className = "p-4 rounded-xl border bg-emerald-50 border-emerald-300 text-emerald-900 transition-colors";
+        kpiOtherRemain.className = "text-xl sm:text-2xl font-extrabold font-mono text-emerald-700";
+        kpiOtherRemain.innerText = `$${fmt(remainingAllowance)}`;
+        kpiRemainTitle.innerText = (totalOtherOwn > 0) ? "其他費用補助額度 (含自籌)" : "其他費用剩餘額度";
+        kpiRemainSub.innerText = (remainingAllowance === 0) ? "額度已完整全額編列" : "尚可規劃其他經費";
+        
+        if (remainingAllowance > 0) {
+          overallStatusPill.className = "text-xs sm:text-sm px-3 py-1.5 rounded-full font-bold bg-rose-100 text-rose-700";
+          overallStatusPill.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i>錯誤：補助款未達設定總額';
+        } else if (totalTrainHours > 46 || isMaterialOver || isMarketingOver) {
+          overallStatusPill.className = "text-xs sm:text-sm px-3 py-1.5 rounded-full font-bold bg-amber-100 text-amber-800";
+          overallStatusPill.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1"></i>細項待調整';
+        } else {
+          overallStatusPill.className = "text-xs sm:text-sm px-3 py-1.5 rounded-full font-bold bg-emerald-100 text-emerald-800";
+          overallStatusPill.innerHTML = (totalOtherOwn > 0) ? '<i class="fa-solid fa-circle-check mr-1"></i>合規無誤 (含自籌款)' : '<i class="fa-solid fa-circle-check mr-1"></i>合規無誤';
+        }
+      }
+
+      // 8. 構建並渲染概算表
+      renderTable({
+        planYear: val('plan_year') || 1,
+        hourlyWage,
+        monthlyWage150Sub,
+        monthlyWage26Own,
+        p_ins150Sub,
+        monthlyWorkerIns176,
+        c176, m176, wage176_total, wage176_own, wage176_sub, ins176_total, ins176_own, ins176_sub,
+        c150, m150, wage150_total, wage150_own, wage150_sub, ins150_total, ins150_own, ins150_sub,
+        c110, m110, wage110_total, wage110_own, wage110_sub, ins110_total, ins110_own, ins110_sub,
+        hasMgr, mgrTitleName, cMgr, mMgr, mgrMonthlyWage, mgrMonthlyIns,
+        mgr_wage_total, mgr_wage_own, mgr_wage_sub, mgr_ins_total, mgr_ins_own, mgr_ins_sub,
+        retainedWageOwn, retainedInsOwn,
+        trainIntHours, trainExtHours, trainIntCost, trainExtCost, trainTotalCost, trainOwnCost, trainSubCost,
+        feeMarketingTotal, feeMarketingOwn, feeMarketingSub,
+        feePostageTotal, feePostageOwn, feePostageSub,
+        feePrintingTotal, feePrintingOwn, feePrintingSub,
+        feeMaterialsTotal, feeMaterialsOwn, feeMaterialsSub,
+        feeOtherTotal, feeOtherOwn, feeOtherSub,
+        totalLaborSubsidy, otherTotalSub, maxOtherAllowance, remainingAllowance
+      });
+    }
+
+    // 本系統採「須足額編列」的檢核規則：其他費用申請補助須等於 5%／15% 額度，
+    // 而整表總計須等於「用人補助款＋其他費用額度」。
+    function subsidyCheck(labor, other, maximum) {
+      const expected = labor + maximum;
+      const actual = labor + other;
+      const diff = actual - expected;
+      return { expected, actual, diff, ok: Math.abs(diff) < 0.5,
+        message: diff > 0 ? `錯誤：超出 ${fmt(diff)} 元` : diff < 0 ? `錯誤：不足 ${fmt(-diff)} 元` : '正確' };
+    }
+
+    // 表格資料存儲器（供匯出使用）
+    let currentRenderData = null;
+
+    function renderTable(d) {
+      currentRenderData = d;
+      const typeLabel = (currentPlanType === 'social') ? '社會型' : '經濟型';
+      const headingText = `第 ${d.planYear} 年經費概算表（${typeLabel}）`;
+      const displayTitle = document.getElementById('display_heading_title');
+      if (displayTitle) {
+        displayTitle.innerText = headingText;
+      }
+
+      const tbody = document.getElementById('budget_tbody');
+      tbody.innerHTML = '';
+
+      // 1. 生成算式字串
+      let wageNotes = [];
+      if (d.c176 > 0) {
+        let note176 = `150 小時*${d.hourlyWage} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.wage176_sub)}`;
+        if (d.wage176_own > 0) {
+          note176 += `<br>自籌26小時*${d.hourlyWage}元*${d.m176}月*${d.c176}人=${fmt(d.wage176_own)}`;
+        }
+        wageNotes.push(note176);
+      }
+      if (d.c110 > 0) {
+        wageNotes.push(`110 小時*${d.hourlyWage} 元*${d.m110} 個月*${d.c110} 人=${fmt(d.wage110_sub)}`);
+      }
+      const workerWageNoteHtml = wageNotes.join('<br>') || '';
+
+      const mgrTitleDisplay = (currentPlanType === 'social') ? '專案管理人/薪資' : '專案經理人/薪資';
+      const mgrInsTitleDisplay = (currentPlanType === 'social') ? '專案管理人/勞職健保費' : '專案經理人/勞職健保費';
+      const mgrWageNote = d.hasMgr ? `${fmt(d.mgrMonthlyWage)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_wage_sub)}` : '';
+
+      // 進用人員保費備註：全額補助（26h 不另列保費自籌）
+      let insNotes = [];
+      if (d.c176 > 0) {
+        insNotes.push(`進用人員勞職健保費（全額補助）：${fmt(d.p_ins150Sub)} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.ins176_sub)}；26h無須另列保費自籌`);
+      }
+      if (d.c110 > 0) {
+        insNotes.push(`${fmt(d.p_ins110Sub)} 元*${d.m110} 個月*${d.c110} 人=${fmt(d.ins110_sub)}`);
+      }
+      const workerInsNoteHtml = insNotes.join('<br>') || '';
+      const mgrInsNote = d.hasMgr ? `${fmt(d.mgrMonthlyIns)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_ins_sub)}` : '';
+
+      // 人事小計
+      const laborSubtotalReq = (d.wage176_total + d.wage110_total) + d.mgr_wage_total + (d.ins176_total + d.ins110_total) + d.mgr_ins_total;
+      const laborSubtotalOwn = (d.wage176_own + d.wage110_own) + d.mgr_wage_own + (d.ins176_own + d.ins110_own) + d.mgr_ins_own;
+      const laborSubtotalSub = (d.wage176_sub + d.wage110_sub) + d.mgr_wage_sub + (d.ins176_sub + d.ins110_sub) + d.mgr_ins_sub;
+
+      // 外部人事小計
+      const externalTotalReq = d.retainedWageOwn + d.retainedInsOwn;
+      const externalTotalOwn = d.retainedWageOwn + d.retainedInsOwn;
+
+      // 訓練費用算式與自籌款拆分
+      let trainDescList = [];
+      if (d.trainIntHours > 0) trainDescList.push(`內聘:${d.trainIntHours} 小時 *1,000 元`);
+      if (d.trainExtHours > 0) trainDescList.push(`外聘:${d.trainExtHours} 小時*2,000 元`);
+      let trainNoteHtml = trainDescList.join('<br>') || '';
+      if (d.trainTotalCost > 0 && trainDescList.length > 1) {
+        trainNoteHtml += `<br>費用:${fmt(d.trainTotalCost)} 元`;
+      }
+
+      // 其他費用各項 (支援自籌款分配)
+      const marketingNote = (currentPlanType === 'social') ? '推展費（社會型 1 年 5,000 元）' : '推展費/經濟型 1 年 15,000 元';
+      const otherRatePct = (currentPlanType === 'social') ? '5%' : '15%';
+      
+      // 其他費用小計（不含訓練費）：行銷 + 郵電 + 印刷 + 材料 + 其他
+      const otherSubtotalReq = d.feeMarketingTotal + d.feePostageTotal + d.feePrintingTotal + d.feeMaterialsTotal + d.feeOtherTotal;
+      const otherSubtotalOwn = d.feeMarketingOwn + d.feePostageOwn + d.feePrintingOwn + d.feeMaterialsOwn + d.feeOtherOwn;
+      const otherSubtotalSub = d.feeMarketingSub + d.feePostageSub + d.feePrintingSub + d.feeMaterialsSub + d.feeOtherSub;
+
+      // 其他費用合計：訓練費用小計 + 其他費用小計
+      const otherTotalReq = d.trainTotalCost + otherSubtotalReq;
+      const otherTotalOwn = d.trainOwnCost + otherSubtotalOwn;
+      const otherTotalSub = d.trainSubCost + otherSubtotalSub;
+      const otherSubtotalFormula = `${fmt(laborSubtotalSub)}*${otherRatePct}=${fmt(d.maxOtherAllowance)} 元`;
+
+      // 總計：人事小計 + 外部人事小計 + 其他費用合計
+      const grandReq = laborSubtotalReq + externalTotalReq + otherTotalReq;
+      const grandOwn = laborSubtotalOwn + externalTotalOwn + otherTotalOwn;
+      const grandSub = laborSubtotalSub + otherTotalSub;
+      const check = subsidyCheck(laborSubtotalSub, otherTotalSub, d.maxOtherAllowance);
+      const checkCellClass = check.ok ? 'text-emerald-700' : 'text-rose-700 bg-rose-50';
+
+      // HTML 渲染結構
+      const rowsHtml = `
+        <!-- 人事費用區塊 -->
+        <tr>
+          <td rowspan="5" class="border border-slate-800 p-2.5 text-center font-bold tracking-widest bg-slate-50 align-middle">
+            人事<br>費用
+          </td>
+          <td class="border border-slate-800 p-2.5 font-medium">進用人員/薪資</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.wage176_total + d.wage110_total)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.wage176_own + d.wage110_own)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.wage176_sub + d.wage110_sub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">${workerWageNoteHtml}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">${mgrTitleDisplay}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_wage_total)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_wage_own)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_wage_sub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">${mgrWageNote}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">進用人員/勞職健保費</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.ins176_total + d.ins110_total)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.ins176_own + d.ins110_own)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.ins176_sub + d.ins110_sub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">${workerInsNoteHtml}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">${mgrInsTitleDisplay}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_ins_total)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_ins_own)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.mgr_ins_sub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">${mgrInsNote}</td>
+        </tr>
+        <tr class="bg-slate-200/90 font-bold">
+          <td class="border border-slate-800 p-2.5 text-center">小計</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(laborSubtotalReq)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(laborSubtotalOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(laborSubtotalSub)}</td>
+          <td class="border border-slate-800 p-2.5"></td>
+        </tr>
+
+        <!-- 外部人事區塊 -->
+        <tr>
+          <td rowspan="3" class="border border-slate-800 p-2.5 text-center font-bold tracking-widest bg-slate-50 align-middle">
+            外部<br>人事
+          </td>
+          <td class="border border-slate-800 p-2.5 font-medium">留用薪資</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.retainedWageOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.retainedWageOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">0</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">保險費</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.retainedInsOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.retainedInsOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">0</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr class="bg-slate-200/90 font-bold">
+          <td class="border border-slate-800 p-2.5 text-center">小計</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(externalTotalReq)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(externalTotalOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">0</td>
+          <td class="border border-slate-800 p-2.5"></td>
+        </tr>
+
+        <!-- 其他費用區塊 (自籌款如實呈顯) -->
+        <tr>
+          <td rowspan="9" class="border border-slate-800 p-2.5 text-center font-bold bg-slate-50 align-middle text-sm">
+            其他費<br>用 ${otherRatePct}<br>
+            <span class="text-sky-700 font-mono text-xs">${fmt(d.maxOtherAllowance)}</span>
+          </td>
+          <td class="border border-slate-800 p-2.5 font-medium">教育訓練費<br><span class="text-xs text-slate-500">(最高 46 小時)</span></td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.trainTotalCost)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.trainOwnCost > 0 ? 'text-amber-700 font-bold' : ''}">${d.trainOwnCost > 0 ? fmt(d.trainOwnCost) : ''}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.trainSubCost)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">${trainNoteHtml}</td>
+        </tr>
+        <tr class="bg-slate-200/90 font-bold">
+          <td class="border border-slate-800 p-2.5 text-center">訓練費用小計</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.trainTotalCost)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.trainOwnCost > 0 ? 'text-amber-700 font-bold' : ''}">${d.trainOwnCost > 0 ? fmt(d.trainOwnCost) : ''}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.trainSubCost)}</td>
+          <td class="border border-slate-800 p-2.5"></td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">行銷費用</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeMarketingTotal)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.feeMarketingOwn > 0 ? 'text-amber-700 font-bold' : ''}">${d.feeMarketingOwn > 0 ? fmt(d.feeMarketingOwn) : '0'}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeMarketingSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm text-slate-800">${marketingNote}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">郵電通訊費</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feePostageTotal)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.feePostageOwn > 0 ? 'text-amber-700 font-bold' : ''}">${d.feePostageOwn > 0 ? fmt(d.feePostageOwn) : '0'}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feePostageSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">印刷及裝訂費</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feePrintingTotal)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.feePrintingOwn > 0 ? 'text-amber-700 font-bold' : ''}">${d.feePrintingOwn > 0 ? fmt(d.feePrintingOwn) : '0'}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feePrintingSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">材料費<br><span class="text-xs text-slate-500">(其他費用 10%以內)</span></td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeMaterialsTotal)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.feeMaterialsOwn > 0 ? 'text-amber-700 font-bold' : ''}">${d.feeMaterialsOwn > 0 ? fmt(d.feeMaterialsOwn) : '0'}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeMaterialsSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr>
+          <td class="border border-slate-800 p-2.5 font-medium">其他</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeOtherTotal)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${d.feeOtherOwn > 0 ? 'text-amber-700 font-bold' : ''}">${d.feeOtherOwn > 0 ? fmt(d.feeOtherOwn) : '0'}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(d.feeOtherSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs text-slate-500"></td>
+        </tr>
+        <tr class="bg-slate-200/90 font-bold">
+          <td class="border border-slate-800 p-2.5 text-center">其他費用小計</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(otherSubtotalReq)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${otherSubtotalOwn > 0 ? 'text-amber-700' : ''}">${fmt(otherSubtotalOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(otherSubtotalSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs sm:text-sm font-sans">${otherSubtotalFormula}</td>
+        </tr>
+        <tr class="bg-slate-200/90 font-bold">
+          <td class="border border-slate-800 p-2.5 text-center">其他費用合計</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(otherTotalReq)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono ${otherTotalOwn > 0 ? 'text-amber-700' : ''}">${fmt(otherTotalOwn)}</td>
+          <td class="border border-slate-800 p-2.5 text-right font-mono">${fmt(otherTotalSub)}</td>
+          <td class="border border-slate-800 p-2.5 text-xs font-bold ${checkCellClass}">${check.ok ? '正確' : '錯誤：其他費用應為 ' + fmt(d.maxOtherAllowance) + ' 元'}</td>
+        </tr>
+
+        <!-- 總計列 -->
+        <tr class="font-bold border-t-2 border-slate-800 text-base">
+          <td colspan="2" class="border border-slate-800 p-3 text-center">總計</td>
+          <td class="border border-slate-800 p-3 text-right font-mono">${fmt(grandReq)}</td>
+          <td class="border border-slate-800 p-3 text-right font-mono">${fmt(grandOwn)}</td>
+          <td class="border border-slate-800 p-3 text-right font-mono ${check.ok ? 'text-emerald-700' : 'text-rose-700 bg-rose-50'}">${fmt(grandSub)}</td>
+          <td class="border border-slate-800 p-3 text-xs font-bold ${check.ok ? 'text-emerald-700' : 'text-rose-700 bg-rose-50'}">${check.ok ? '檢核正確' : check.message + '；應為 ' + fmt(check.expected) + ' 元'}</td>
+        </tr>
+      `;
+
+      tbody.innerHTML = rowsHtml;
+    }
+
+    // 一鍵複製乾淨表格 (完全比照《正確的算式》結構)
+    function copyTableForWord() {
+      if (!currentRenderData) return;
+      const d = currentRenderData;
+      const typeLabel = (currentPlanType === 'social') ? '社會型' : '經濟型';
+      const headingText = `第 ${d.planYear} 年經費概算表（${typeLabel}）`;
+
+      const workerWageNoteText = (d.c176 > 0) ? `150 小時*${d.hourlyWage} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.wage176_sub)}` + ((d.wage176_own > 0) ? `\n自籌26小時*${d.hourlyWage}元*${d.m176}月*${d.c176}人=${fmt(d.wage176_own)}` : '') : '';
+      const mgrTitleDisplay = (currentPlanType === 'social') ? '專案管理人/薪資' : '專案經理人/薪資';
+      const mgrInsTitleDisplay = (currentPlanType === 'social') ? '專案管理人/勞職健保費' : '專案經理人/勞職健保費';
+      const mgrWageNoteText = d.hasMgr ? `${fmt(d.mgrMonthlyWage)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_wage_sub)}` : '';
+      const workerInsNoteText = (d.c176 > 0) ? `${fmt(d.monthlyWorkerIns176)} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.ins176_total)}（全額補助，26h不另列保費自籌）` : '';
+      const mgrInsNoteText = d.hasMgr ? `${fmt(d.mgrMonthlyIns)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_ins_sub)}` : '';
+
+      let trainNoteText = [];
+      if (d.trainIntHours > 0) trainNoteText.push(`內聘:${d.trainIntHours} 小時 *1,000 元`);
+      if (d.trainExtHours > 0) trainNoteText.push(`外聘:${d.trainExtHours} 小時*2,000 元`);
+      let trainFullNote = trainNoteText.join('\n');
+      if (d.trainTotalCost > 0 && trainNoteText.length > 1) trainFullNote += `\n費用:${fmt(d.trainTotalCost)} 元`;
+
+      const marketingNote = (currentPlanType === 'social') ? '推展費（社會型 1 年 5,000 元）' : '推展費/經濟型 1 年 15,000 元';
+      const otherRatePct = (currentPlanType === 'social') ? '5%' : '15%';
+      
+      const otherSubtotalReq = d.feeMarketingTotal + d.feePostageTotal + d.feePrintingTotal + d.feeMaterialsTotal + d.feeOtherTotal;
+      const otherSubtotalOwn = d.feeMarketingOwn + d.feePostageOwn + d.feePrintingOwn + d.feeMaterialsOwn + d.feeOtherOwn;
+      const otherSubtotalSub = d.feeMarketingSub + d.feePostageSub + d.feePrintingSub + d.feeMaterialsSub + d.feeOtherSub;
+
+      const otherTotalReq = d.trainTotalCost + otherSubtotalReq;
+      const otherTotalOwn = d.trainOwnCost + otherSubtotalOwn;
+      const otherTotalSub = d.trainSubCost + otherSubtotalSub;
+
+      const laborSubtotalReq = (d.wage176_total + d.wage110_total) + d.mgr_wage_total + (d.ins176_total + d.ins110_total) + d.mgr_ins_total;
+      const laborSubtotalOwn = (d.wage176_own + d.wage110_own) + d.mgr_wage_own + (d.ins176_own + d.ins110_own) + d.mgr_ins_own;
+      const laborSubtotalSub = (d.wage176_sub + d.wage110_sub) + d.mgr_wage_sub + (d.ins176_sub + d.ins110_sub) + d.mgr_ins_sub;
+      const externalTotalReq = d.retainedWageOwn + d.retainedInsOwn;
+      const externalTotalOwn = d.retainedWageOwn + d.retainedInsOwn;
+      const otherSubtotalFormula = `${fmt(laborSubtotalSub)}*${otherRatePct}=${fmt(d.maxOtherAllowance)} 元`;
+
+      const grandReq = laborSubtotalReq + externalTotalReq + otherTotalReq;
+      const grandOwn = laborSubtotalOwn + externalTotalOwn + otherTotalOwn;
+      const grandSub = laborSubtotalSub + otherTotalSub;
+      const check = subsidyCheck(laborSubtotalSub, otherTotalSub, d.maxOtherAllowance);
+
+      let html = `
+        <div style="font-family:'標楷體','DFKai-SB',sans-serif; text-align:center; font-size:16pt; font-weight:bold; margin-bottom:8px;">
+          ${headingText}
+        </div>
+        <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;font-family:'標楷體','DFKai-SB',sans-serif;font-size:12pt;width:100%;border:1.5px solid #000;">
+          <thead>
+            <tr style="text-align:center;font-weight:bold;">
+              <th colspan="2" style="border:1px solid #000;width:28%;">項目</th>
+              <th colspan="3" style="border:1px solid #000;width:39%;">金額</th>
+              <th rowspan="2" style="border:1px solid #000;width:33%;">備註</th>
+            </tr>
+            <tr style="text-align:center;font-weight:bold;">
+              <th style="border:1px solid #000;width:10%;">大類</th>
+              <th style="border:1px solid #000;width:18%;">細項</th>
+              <th style="border:1px solid #000;width:13%;">所需經費</th>
+              <th style="border:1px solid #000;width:13%;">自籌款</th>
+              <th style="border:1px solid #000;width:13%;">申請補助款</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 人事費用 -->
+            <tr>
+              <td rowspan="5" style="border:1px solid #000;text-align:center;font-weight:bold;vertical-align:middle;">人事<br>費用</td>
+              <td style="border:1px solid #000;text-align:left;">進用人員/薪資</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.wage176_total + d.wage110_total)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.wage176_own + d.wage110_own)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.wage176_sub + d.wage110_sub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${workerWageNoteText.replace(/\n/g, '<br>')}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">${mgrTitleDisplay}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_wage_total)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_wage_own)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_wage_sub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${mgrWageNoteText}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">進用人員/勞職健保費</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.ins176_total + d.ins110_total)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.ins176_own + d.ins110_own)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.ins176_sub + d.ins110_sub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${workerInsNoteText.replace(/\n/g, '<br>')}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">${mgrInsTitleDisplay}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_ins_total)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_ins_own)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.mgr_ins_sub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${mgrInsNoteText}</td>
+            </tr>
+            <tr style="background-color:#EFEFEF;font-weight:bold;">
+              <td style="border:1px solid #000;text-align:center;">小計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(laborSubtotalReq)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(laborSubtotalOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(laborSubtotalSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+
+            <!-- 外部人事 -->
+            <tr>
+              <td rowspan="3" style="border:1px solid #000;text-align:center;font-weight:bold;vertical-align:middle;">外部<br>人事</td>
+              <td style="border:1px solid #000;text-align:left;">留用薪資</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.retainedWageOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.retainedWageOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">0</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">保險費</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.retainedInsOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.retainedInsOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">0</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr style="background-color:#EFEFEF;font-weight:bold;">
+              <td style="border:1px solid #000;text-align:center;">小計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(externalTotalReq)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(externalTotalOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">0</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+
+            <!-- 其他費用 (含自籌款) -->
+            <tr>
+              <td rowspan="9" style="border:1px solid #000;text-align:center;font-weight:bold;vertical-align:middle;">其他費用<br>${otherRatePct}<br>${fmt(d.maxOtherAllowance)}</td>
+              <td style="border:1px solid #000;text-align:left;">教育訓練費<br><span style="font-size:10pt;">(最高 46 小時)</span></td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.trainTotalCost)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.trainOwnCost > 0 ? fmt(d.trainOwnCost) : ''}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.trainSubCost)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${trainFullNote.replace(/\n/g, '<br>')}</td>
+            </tr>
+            <tr style="background-color:#EFEFEF;font-weight:bold;">
+              <td style="border:1px solid #000;text-align:center;">訓練費用小計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.trainTotalCost)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.trainOwnCost > 0 ? fmt(d.trainOwnCost) : ''}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.trainSubCost)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">行銷費用</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeMarketingTotal)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.feeMarketingOwn > 0 ? fmt(d.feeMarketingOwn) : '0'}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeMarketingSub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${marketingNote}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">郵電通訊費</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feePostageTotal)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.feePostageOwn > 0 ? fmt(d.feePostageOwn) : '0'}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feePostageSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">印刷及裝訂費</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feePrintingTotal)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.feePrintingOwn > 0 ? fmt(d.feePrintingOwn) : '0'}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feePrintingSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">材料費<br><span style="font-size:10pt;">(其他費用 10%以內)</span></td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeMaterialsTotal)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.feeMaterialsOwn > 0 ? fmt(d.feeMaterialsOwn) : '0'}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeMaterialsSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;text-align:left;">其他</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeOtherTotal)}</td>
+              <td style="border:1px solid #000;text-align:right;">${d.feeOtherOwn > 0 ? fmt(d.feeOtherOwn) : '0'}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(d.feeOtherSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+            <tr style="background-color:#EFEFEF;font-weight:bold;">
+              <td style="border:1px solid #000;text-align:center;">其他費用小計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherSubtotalReq)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherSubtotalOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherSubtotalSub)}</td>
+              <td style="border:1px solid #000;text-align:left;font-size:10.5pt;">${otherSubtotalFormula}</td>
+            </tr>
+            <tr style="background-color:#EFEFEF;font-weight:bold;">
+              <td style="border:1px solid #000;text-align:center;">其他費用合計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherTotalReq)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherTotalOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(otherTotalSub)}</td>
+              <td style="border:1px solid #000;"></td>
+            </tr>
+
+            <!-- 總計 -->
+            <tr style="font-weight:bold;">
+              <td colspan="2" style="border:1px solid #000;text-align:center;">總計</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(grandReq)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(grandOwn)}</td>
+              <td style="border:1px solid #000;text-align:right;">${fmt(grandSub)}</td>
+              <td style="border:1px solid #000;${check.ok ? '' : 'color:#b91c1c;font-weight:bold;'}">${check.message}；應為 ${fmt(check.expected)} 元</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      const listener = function(e) {
+        e.clipboardData.setData('text/html', html);
+        e.clipboardData.setData('text/plain', `${headingText}\n(請直接在 Word 貼上 HTML 格式表格)`);
+        e.preventDefault();
+      };
+      document.addEventListener('copy', listener);
+      document.execCommand('copy');
+      document.removeEventListener('copy', listener);
+
+      showToast(`已複製【${headingText}】！可直接在 Word 計畫書貼上表格`, true);
+    }
+
+    // 匯出至 Excel (.xlsx) - 完全比照《正確的算式》格式
+    function exportToExcel() {
+      if (typeof XLSX === 'undefined' || !currentRenderData) {
+        showToast('Excel 匯出模組尚未載入，請稍候重試', false);
+        return;
+      }
+
+      const d = currentRenderData;
+      const typeLabel = (currentPlanType === 'social') ? '社會型' : '經濟型';
+      const headingText = `第 ${d.planYear} 年經費概算表（${typeLabel}）`;
+
+      const ws = {};
+      const blackBorder = {
+        top: { style: 'thin', color: { rgb: "000000" } },
+        bottom: { style: 'thin', color: { rgb: "000000" } },
+        left: { style: 'thin', color: { rgb: "000000" } },
+        right: { style: 'thin', color: { rgb: "000000" } }
+      };
+
+      const fontKai = { name: '標楷體', sz: 11, color: { rgb: "000000" } };
+      const fontKaiBold = { name: '標楷體', sz: 11, bold: true, color: { rgb: "000000" } };
+      const grayFill = { fgColor: { rgb: "EFEFEF" } };
+
+      const workerWageNote = (d.c176 > 0) ? `150 小時*${d.hourlyWage} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.wage176_sub)}` + ((d.wage176_own > 0) ? `\r\n自籌26小時*${d.hourlyWage}元*${d.m176}月*${d.c176}人=${fmt(d.wage176_own)}` : '') : '';
+      const mgrTitleDisplay = (currentPlanType === 'social') ? '專案管理人/薪資' : '專案經理人/薪資';
+      const mgrInsTitleDisplay = (currentPlanType === 'social') ? '專案管理人/勞職健保費' : '專案經理人/勞職健保費';
+      const mgrWageNote = d.hasMgr ? `${fmt(d.mgrMonthlyWage)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_wage_sub)}` : '';
+      const workerInsNote = (d.c176 > 0) ? `${fmt(d.monthlyWorkerIns176)} 元*${d.m176} 個月*${d.c176} 人=${fmt(d.ins176_total)}（全額補助，26h不另列保費自籌）` : '';
+      const mgrInsNote = d.hasMgr ? `${fmt(d.mgrMonthlyIns)} 元*${d.mMgr} 個月*${d.cMgr} 人=${fmt(d.mgr_ins_sub)}` : '';
+
+      let trainNoteArr = [];
+      if (d.trainIntHours > 0) trainNoteArr.push(`內聘:${d.trainIntHours} 小時 *1,000 元`);
+      if (d.trainExtHours > 0) trainNoteArr.push(`外聘:${d.trainExtHours} 小時*2,000 元`);
+      let trainFullNote = trainNoteArr.join('\r\n');
+      if (d.trainTotalCost > 0 && trainNoteArr.length > 1) trainFullNote += `\r\n費用:${fmt(d.trainTotalCost)} 元`;
+
+      const marketingNote = (currentPlanType === 'social') ? '推展費（社會型 1 年 5,000 元）' : '推展費/經濟型 1 年 15,000 元';
+      const otherRatePct = (currentPlanType === 'social') ? '5%' : '15%';
+      
+      const otherSubtotalReq = d.feeMarketingTotal + d.feePostageTotal + d.feePrintingTotal + d.feeMaterialsTotal + d.feeOtherTotal;
+      const otherSubtotalOwn = d.feeMarketingOwn + d.feePostageOwn + d.feePrintingOwn + d.feeMaterialsOwn + d.feeOtherOwn;
+      const otherSubtotalSub = d.feeMarketingSub + d.feePostageSub + d.feePrintingSub + d.feeMaterialsSub + d.feeOtherSub;
+
+      const otherTotalReq = d.trainTotalCost + otherSubtotalReq;
+      const otherTotalOwn = d.trainOwnCost + otherSubtotalOwn;
+      const otherTotalSub = d.trainSubCost + otherSubtotalSub;
+
+      const laborSubtotalReq = (d.wage176_total + d.wage110_total) + d.mgr_wage_total + (d.ins176_total + d.ins110_total) + d.mgr_ins_total;
+      const laborSubtotalOwn = (d.wage176_own + d.wage110_own) + d.mgr_wage_own + (d.ins176_own + d.ins110_own) + d.mgr_ins_own;
+      const laborSubtotalSub = (d.wage176_sub + d.wage110_sub) + d.mgr_wage_sub + (d.ins176_sub + d.ins110_sub) + d.mgr_ins_sub;
+      const externalTotalReq = d.retainedWageOwn + d.retainedInsOwn;
+      const externalTotalOwn = d.retainedWageOwn + d.retainedInsOwn;
+      const otherSubtotalFormula = `${fmt(laborSubtotalSub)}*${otherRatePct}=${fmt(d.maxOtherAllowance)} 元`;
+
+      const grandReq = laborSubtotalReq + externalTotalReq + otherTotalReq;
+      const grandOwn = laborSubtotalOwn + externalTotalOwn + otherTotalOwn;
+      const grandSub = laborSubtotalSub + otherTotalSub;
+
+      // 1. 寫入大標題
+      ws['A1'] = {
+        v: headingText,
+        t: 's',
+        s: { font: { name: '標楷體', sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } }
+      };
+
+      // 2. 表頭
+      const hR2 = [
+        { c: 0, v: '項目' }, { c: 1, v: '' },
+        { c: 2, v: '金額' }, { c: 3, v: '' }, { c: 4, v: '' },
+        { c: 5, v: '備註' }
+      ];
+      hR2.forEach(cell => {
+        ws[XLSX.utils.encode_cell({ r: 1, c: cell.c })] = {
+          v: cell.v, t: 's',
+          s: { font: fontKaiBold, alignment: { horizontal: 'center', vertical: 'center' }, border: blackBorder }
+        };
+      });
+
+      const hR3 = [
+        { c: 0, v: '' }, { c: 1, v: '' },
+        { c: 2, v: '所需經費' }, { c: 3, v: '自籌款' }, { c: 4, v: '申請補助款' },
+        { c: 5, v: '' }
+      ];
+      hR3.forEach(cell => {
+        ws[XLSX.utils.encode_cell({ r: 2, c: cell.c })] = {
+          v: cell.v, t: 's',
+          s: { font: fontKaiBold, alignment: { horizontal: 'center', vertical: 'center' }, border: blackBorder }
+        };
+      });
+
+      // 3. 資料列結構陣列 (分列「其他費用小計」與「其他費用合計」)
+      const grid = [
+        // 人事費用
+        { col0: '人事費用', col1: '進用人員/薪資', req: (d.wage176_total + d.wage110_total), own: (d.wage176_own + d.wage110_own), sub: (d.wage176_sub + d.wage110_sub), note: workerWageNote },
+        { col0: '', col1: mgrTitleDisplay, req: d.mgr_wage_total, own: d.mgr_wage_own, sub: d.mgr_wage_sub, note: mgrWageNote },
+        { col0: '', col1: '進用人員/勞職健保費', req: (d.ins176_total + d.ins110_total), own: (d.ins176_own + d.ins110_own), sub: (d.ins176_sub + d.ins110_sub), note: workerInsNote },
+        { col0: '', col1: mgrInsTitleDisplay, req: d.mgr_ins_total, own: d.mgr_ins_own, sub: d.mgr_ins_sub, note: mgrInsNote },
+        { col0: '', col1: '小計', req: laborSubtotalReq, own: laborSubtotalOwn, sub: laborSubtotalSub, note: '', isSubtotal: true },
+
+        // 外部人事
+        { col0: '外部人事', col1: '留用薪資', req: d.retainedWageOwn, own: d.retainedWageOwn, sub: 0, note: '' },
+        { col0: '', col1: '保險費', req: d.retainedInsOwn, own: d.retainedInsOwn, sub: 0, note: '' },
+        { col0: '', col1: '小計', req: externalTotalReq, own: externalTotalOwn, sub: 0, note: '', isSubtotal: true },
+
+        // 其他費用 (含自籌款，分列小計與合計)
+        { col0: `其他費用 ${otherRatePct}\r\n${fmt(d.maxOtherAllowance)}`, col1: '教育訓練費\r\n(最高 46 小時)', req: d.trainTotalCost, own: (d.trainOwnCost > 0 ? d.trainOwnCost : null), sub: d.trainSubCost, note: trainFullNote },
+        { col0: '', col1: '訓練費用小計', req: d.trainTotalCost, own: (d.trainOwnCost > 0 ? d.trainOwnCost : null), sub: d.trainSubCost, note: '', isSubtotal: true },
+        { col0: '', col1: '行銷費用', req: d.feeMarketingTotal, own: (d.feeMarketingOwn > 0 ? d.feeMarketingOwn : 0), sub: d.feeMarketingSub, note: marketingNote },
+        { col0: '', col1: '郵電通訊費', req: d.feePostageTotal, own: (d.feePostageOwn > 0 ? d.feePostageOwn : 0), sub: d.feePostageSub, note: '' },
+        { col0: '', col1: '印刷及裝訂費', req: d.feePrintingTotal, own: (d.feePrintingOwn > 0 ? d.feePrintingOwn : 0), sub: d.feePrintingSub, note: '' },
+        { col0: '', col1: '材料費\r\n(其他費用 10%以內)', req: d.feeMaterialsTotal, own: (d.feeMaterialsOwn > 0 ? d.feeMaterialsOwn : 0), sub: d.feeMaterialsSub, note: '' },
+        { col0: '', col1: '其他', req: d.feeOtherTotal, own: (d.feeOtherOwn > 0 ? d.feeOtherOwn : 0), sub: d.feeOtherSub, note: '' },
+        { col0: '', col1: '其他費用小計', req: otherSubtotalReq, own: otherSubtotalOwn, sub: otherSubtotalSub, note: otherSubtotalFormula, isSubtotal: true },
+        { col0: '', col1: '其他費用合計', req: otherTotalReq, own: otherTotalOwn, sub: otherTotalSub, note: '', isSubtotal: true },
+
+        // 總計
+        { col0: '總計', col1: '', req: grandReq, own: grandOwn, sub: grandSub, note: subsidyCheck(laborSubtotalSub, otherTotalSub, d.maxOtherAllowance).message + '；應為 ' + fmt(laborSubtotalSub + d.maxOtherAllowance) + ' 元', isGrandTotal: true }
+      ];
+
+      // 4. 逐列寫入
+      grid.forEach((row, idx) => {
+        const rIdx = idx + 3;
+        const isSub = row.isSubtotal;
+        const isGrand = row.isGrandTotal;
+        const f = (isSub || isGrand) ? fontKaiBold : fontKai;
+        const fill = isSub ? grayFill : undefined;
+
+        ws[XLSX.utils.encode_cell({ r: rIdx, c: 0 })] = {
+          v: row.col0, t: 's',
+          s: { font: f, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: blackBorder, fill }
+        };
+
+        ws[XLSX.utils.encode_cell({ r: rIdx, c: 1 })] = {
+          v: row.col1, t: 's',
+          s: { font: f, alignment: { horizontal: (isSub || isGrand) ? 'center' : 'left', vertical: 'center', wrapText: true }, border: blackBorder, fill }
+        };
+
+        const amtList = [row.req, row.own, row.sub];
+        amtList.forEach((val, cOffset) => {
+          const cIdx = 2 + cOffset;
+          const cellRef = XLSX.utils.encode_cell({ r: rIdx, c: cIdx });
+          if (val === null || val === undefined) {
+            ws[cellRef] = { v: '', t: 's', s: { font: f, border: blackBorder, fill } };
+          } else {
+            ws[cellRef] = {
+              v: val, t: 'n', z: '#,##0',
+              s: { font: f, alignment: { horizontal: 'right', vertical: 'center' }, border: blackBorder, fill }
+            };
+          }
+        });
+
+        ws[XLSX.utils.encode_cell({ r: rIdx, c: 5 })] = {
+          v: row.note || '', t: 's',
+          s: { font: fontKai, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: blackBorder, fill }
+        };
+      });
+
+      // 5. 設定合併儲存格 (其他費用由 8 列擴增為 9 列)
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+        { s: { r: 1, c: 0 }, e: { r: 2, c: 1 } },
+        { s: { r: 1, c: 2 }, e: { r: 1, c: 4 } },
+        { s: { r: 1, c: 5 }, e: { r: 2, c: 5 } },
+
+        { s: { r: 3, c: 0 }, e: { r: 7, c: 0 } },  // 人事費用 (5列: r3~r7)
+        { s: { r: 8, c: 0 }, e: { r: 10, c: 0 } }, // 外部人事 (3列: r8~r10)
+        { s: { r: 11, c: 0 }, e: { r: 19, c: 0 } },// 其他費用 (9列: r11~r19)
+        { s: { r: 20, c: 0 }, e: { r: 20, c: 1 } } // 總計 (r20)
+      ];
+
+      const totalRowCount = grid.length + 3;
+      ws['!ref'] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: totalRowCount - 1, c: 5 }
+      });
+
+      ws['!cols'] = [
+        { wch: 14 },
+        { wch: 24 },
+        { wch: 15 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 42 }
+      ];
+
+      ws['!rows'] = [{ hpt: 32 }, { hpt: 22 }, { hpt: 22 }];
+      for (let i = 3; i < totalRowCount; i++) {
+        ws['!rows'].push({ hpt: 28 });
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `${typeLabel}經費概算表`);
+
+      const filename = `${headingText}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      showToast(`已匯出標準格式 Excel 檔案：${filename}`);
+    }
+
+    // 初始載入
+    window.onload = function() {
+      document.getElementById('count_176').value = 2;
+      document.getElementById('has_manager').checked = true;
+      document.getElementById('has_part_time').checked = false;
+      document.getElementById('has_retained').checked = false;
+      toggleManagerInputs();
+      togglePartTimeInputs();
+      toggleRetainedInputs();
+      calculateAll(true);
+    };
+  </script>
+</body>
+</html>
